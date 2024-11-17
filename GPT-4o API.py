@@ -1,4 +1,4 @@
-__version__ = (1, 0, 8)
+__version__ = (1, 0, 9)
 
 #             █ █ ▀ █▄▀ ▄▀█ █▀█ ▀
 #             █▀█ █ █ █ █▀█ █▀▄ █
@@ -53,9 +53,9 @@ class GPT4oMod(loader.Module):
 
         return text
 
-    @loader.command(ru_doc="Отправить запрос к GPT-4o API")
+    @loader.command(ru_doc="<ваш запрос> Отправить запрос к GPT-4o API")
     async def gpt4o(self, message: Message):
-        """Send a request to GPT-4o API"""
+        """<your query> Send a request to GPT-4o API"""
         args = utils.get_args_raw(message)
         if not args:
             await utils.answer(message, self.strings("error"))
