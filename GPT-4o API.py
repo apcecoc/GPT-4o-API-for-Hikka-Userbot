@@ -1,4 +1,4 @@
-__version__ = (1, 0, 9)
+__version__ = (1, 0, 10)
 
 #             █ █ ▀ █▄▀ ▄▀█ █▀█ ▀
 #             █▀█ █ █ █ █▀█ █▀▄ █
@@ -8,8 +8,8 @@ __version__ = (1, 0, 9)
 # 🔒      Licensed under the GNU AGPLv3
 # 🌐 https://www.gnu.org/licenses/agpl-3.0.html
 
-# meta pic: https://example.com/api_icon.png
-# meta banner: https://example.com/api_banner.jpg
+# meta pic: https://i.ibb.co/qnmP7nX/file-21.jpg
+# meta banner: https://i.ibb.co/qnmP7nX/file-21.jpg
 # meta developer: @apcecoc
 # scope: hikka_only
 # scope: hikka_min 1.2.10
