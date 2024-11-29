@@ -1,10 +1,10 @@
 import json
 import aiohttp
-from markdown2 import markdown
+import re
 from telethon.tl.types import Message
 from .. import loader, utils
 
-__version__ = (1, 0, 11)
+__version__ = (1, 0, 12)
 
 #             █ █ ▀ █▄▀ ▄▀█ █▀█ ▀
 #             █▀█ █ █ █ █▀█ █▀▄ █
@@ -38,11 +38,27 @@ class GPT4oMod(loader.Module):
         "_cls_doc": "Взаимодействие с API GPT-4о",
     }
 
-    def _convert_markdown_to_html(self, text: str) -> str:
+    def _markdown_to_html(self, text: str) -> str:
         """
-        Converts Markdown to HTML using markdown2 library.
+        Convert Markdown to HTML manually.
         """
-        return markdown(text)
+        # Замена **жирного текста**
+        text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+        # Замена _курсива_
+        text = re.sub(r"_(.+?)_", r"<i>\1</i>", text)
+        # Замена заголовков (# Header)
+        text = re.sub(r"^# (.+)", r"<h1>\1</h1>", text, flags=re.MULTILINE)
+        text = re.sub(r"^## (.+)", r"<h2>\1</h2>", text, flags=re.MULTILINE)
+        text = re.sub(r"^### (.+)", r"<h3>\1</h3>", text, flags=re.MULTILINE)
+        # Замена кодовых блоков ```language\ncode```
+        text = re.sub(
+            r"```(\w+)?\n([\s\S]*?)```",
+            lambda m: f"<pre><code class='{m.group(1) or 'plaintext'}'>{utils.escape_html(m.group(2))}</code></pre>",
+            text,
+        )
+        # Замена инлайнового кода `code`
+        text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
+        return text
 
     @loader.command(ru_doc="Отправить запрос к GPT-4o API")
     async def gpt4o(self, message: Message):
@@ -73,8 +89,8 @@ class GPT4oMod(loader.Module):
                         data = await resp.json()
                         response_message = data.get("message", "No response received.")
 
-                        # Convert the entire response from Markdown to HTML
-                        html_response = self._convert_markdown_to_html(response_message)
+                        # Преобразуем Markdown в HTML
+                        html_response = self._markdown_to_html(response_message)
 
                         await utils.answer(
                             message,
