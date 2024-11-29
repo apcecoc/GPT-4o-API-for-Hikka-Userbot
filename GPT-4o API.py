@@ -1,11 +1,10 @@
 import json
 import aiohttp
-import re
 from markdown2 import markdown
 from telethon.tl.types import Message
 from .. import loader, utils
 
-__version__ = (1, 0, 10)
+__version__ = (1, 0, 11)
 
 #             █ █ ▀ █▄▀ ▄▀█ █▀█ ▀
 #             █▀█ █ █ █ █▀█ █▀▄ █
@@ -38,30 +37,6 @@ class GPT4oMod(loader.Module):
         "response": "🤖 <b>Ответ GPT-4o:</b>\n\n{response}",
         "_cls_doc": "Взаимодействие с API GPT-4о",
     }
-
-    def _preserve_code_blocks(self, text: str) -> str:
-        """
-        Extracts and preserves code blocks from the text.
-        """
-        code_block_pattern = re.compile(r"```(\w+)?\n([\s\S]*?)```")
-        matches = code_block_pattern.findall(text)
-        replacements = {}
-
-        # Заменяем кодовые блоки на маркеры
-        for i, (lang, code) in enumerate(matches):
-            placeholder = f"__CODE_BLOCK_{i}__"
-            replacements[placeholder] = f"```{lang}\n{code}```"
-            text = text.replace(f"```{lang}\n{code}```", placeholder)
-
-        return text, replacements
-
-    def _restore_code_blocks(self, text: str, replacements: dict) -> str:
-        """
-        Restores preserved code blocks into the text.
-        """
-        for placeholder, code_block in replacements.items():
-            text = text.replace(placeholder, code_block)
-        return text
 
     def _convert_markdown_to_html(self, text: str) -> str:
         """
@@ -98,18 +73,12 @@ class GPT4oMod(loader.Module):
                         data = await resp.json()
                         response_message = data.get("message", "No response received.")
 
-                        # Preserve code blocks
-                        response_without_code, code_blocks = self._preserve_code_blocks(response_message)
-
-                        # Convert remaining Markdown to HTML
-                        html_response = self._convert_markdown_to_html(response_without_code)
-
-                        # Restore code blocks
-                        final_response = self._restore_code_blocks(html_response, code_blocks)
+                        # Convert the entire response from Markdown to HTML
+                        html_response = self._convert_markdown_to_html(response_message)
 
                         await utils.answer(
                             message,
-                            self.strings("response").format(response=final_response),
+                            self.strings("response").format(response=html_response),
                         )
                     else:
                         await utils.answer(message, self.strings("error"))
