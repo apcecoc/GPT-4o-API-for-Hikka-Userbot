@@ -5,7 +5,7 @@ from markdown2 import markdown
 from telethon.tl.types import Message
 from .. import loader, utils
 
-__version__ = (1, 0, 9)
+__version__ = (1, 0, 10)
 
 #             █ █ ▀ █▄▀ ▄▀█ █▀█ ▀
 #             █▀█ █ █ █ █▀█ █▀▄ █
@@ -39,24 +39,35 @@ class GPT4oMod(loader.Module):
         "_cls_doc": "Взаимодействие с API GPT-4о",
     }
 
+    def _preserve_code_blocks(self, text: str) -> str:
+        """
+        Extracts and preserves code blocks from the text.
+        """
+        code_block_pattern = re.compile(r"```(\w+)?\n([\s\S]*?)```")
+        matches = code_block_pattern.findall(text)
+        replacements = {}
+
+        # Заменяем кодовые блоки на маркеры
+        for i, (lang, code) in enumerate(matches):
+            placeholder = f"__CODE_BLOCK_{i}__"
+            replacements[placeholder] = f"```{lang}\n{code}```"
+            text = text.replace(f"```{lang}\n{code}```", placeholder)
+
+        return text, replacements
+
+    def _restore_code_blocks(self, text: str, replacements: dict) -> str:
+        """
+        Restores preserved code blocks into the text.
+        """
+        for placeholder, code_block in replacements.items():
+            text = text.replace(placeholder, code_block)
+        return text
+
     def _convert_markdown_to_html(self, text: str) -> str:
         """
         Converts Markdown to HTML using markdown2 library.
         """
         return markdown(text)
-
-    def _format_code_block(self, text: str) -> str:
-        """
-        Formats code blocks, replacing triple backticks with <pre> tags and extracting the programming language.
-        """
-        code_block_pattern = re.compile(r"```(\w+)?\n([\s\S]*?)```")
-        matches = code_block_pattern.findall(text)
-
-        for lang, code in matches:
-            formatted_code = f"<pre><code class='{lang}'>{utils.escape_html(code)}</code></pre>"
-            text = text.replace(f"```{lang}\n{code}```", formatted_code)
-
-        return text
 
     @loader.command(ru_doc="Отправить запрос к GPT-4o API")
     async def gpt4o(self, message: Message):
@@ -87,15 +98,18 @@ class GPT4oMod(loader.Module):
                         data = await resp.json()
                         response_message = data.get("message", "No response received.")
 
-                        # Convert Markdown to HTML
-                        html_response = self._convert_markdown_to_html(response_message)
+                        # Preserve code blocks
+                        response_without_code, code_blocks = self._preserve_code_blocks(response_message)
 
-                        # Format code blocks
-                        formatted_response = self._format_code_block(html_response)
+                        # Convert remaining Markdown to HTML
+                        html_response = self._convert_markdown_to_html(response_without_code)
+
+                        # Restore code blocks
+                        final_response = self._restore_code_blocks(html_response, code_blocks)
 
                         await utils.answer(
                             message,
-                            self.strings("response").format(response=formatted_response),
+                            self.strings("response").format(response=final_response),
                         )
                     else:
                         await utils.answer(message, self.strings("error"))
