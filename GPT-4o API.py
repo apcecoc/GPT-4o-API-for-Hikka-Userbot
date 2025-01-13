@@ -1,21 +1,22 @@
 import json
 import aiohttp
 import re
+from markdown2 import markdown
 from telethon.tl.types import Message
 from .. import loader, utils
 
-__version__ = (1, 0, 12)
+__version__ = (1, 1, 0)
 
-#             █ █ ▀ █▄▀ ▄▀█ █▀█ ▀
-#             █▀█ █ █ █ █▀█ █▀▄ █
-#              © Copyright 2024
+#       █████  ██████   ██████ ███████  ██████  ██████   ██████ 
+#       ██   ██ ██   ██ ██      ██      ██      ██    ██ ██      
+#       ███████ ██████  ██      █████   ██      ██    ██ ██      
+#       ██   ██ ██      ██      ██      ██      ██    ██ ██      
+#       ██   ██ ██       ██████ ███████  ██████  ██████   ██████
+#              © Copyright 2025
 #           https://t.me/apcecoc
 #
 # 🔒      Licensed under the GNU AGPLv3
 # 🌐 https://www.gnu.org/licenses/agpl-3.0.html
-
-# meta pic: https://example.com/api_icon.png
-# meta banner: https://example.com/api_banner.jpg
 # meta developer: @apcecoc
 # scope: hikka_only
 # scope: hikka_min 1.2.10
@@ -38,26 +39,23 @@ class GPT4oMod(loader.Module):
         "_cls_doc": "Взаимодействие с API GPT-4о",
     }
 
-    def _markdown_to_html(self, text: str) -> str:
+    def _convert_markdown_to_html(self, text: str) -> str:
         """
-        Convert Markdown to HTML manually.
+        Converts Markdown to HTML using markdown2 library.
         """
-        # Замена **жирного текста**
-        text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
-        # Замена _курсива_
-        text = re.sub(r"_(.+?)_", r"<i>\1</i>", text)
-        # Замена заголовков (# Header)
-        text = re.sub(r"^# (.+)", r"<h1>\1</h1>", text, flags=re.MULTILINE)
-        text = re.sub(r"^## (.+)", r"<h2>\1</h2>", text, flags=re.MULTILINE)
-        text = re.sub(r"^### (.+)", r"<h3>\1</h3>", text, flags=re.MULTILINE)
-        # Замена кодовых блоков ```language\ncode```
-        text = re.sub(
-            r"```(\w+)?\n([\s\S]*?)```",
-            lambda m: f"<pre><code class='{m.group(1) or 'plaintext'}'>{utils.escape_html(m.group(2))}</code></pre>",
-            text,
-        )
-        # Замена инлайнового кода `code`
-        text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
+        return markdown(text)
+
+    def _format_code_block(self, text: str) -> str:
+        """
+        Formats code blocks, replacing triple backticks with <pre> tags and extracting the programming language.
+        """
+        code_block_pattern = re.compile(r"```(\w+)?\n([\s\S]*?)```")
+        matches = code_block_pattern.findall(text)
+
+        for lang, code in matches:
+            formatted_code = f"<pre><code class='{lang}'>{utils.escape_html(code)}</code></pre>"
+            text = text.replace(f"```{lang}\n{code}```", formatted_code)
+
         return text
 
     @loader.command(ru_doc="Отправить запрос к GPT-4o API")
@@ -79,7 +77,7 @@ class GPT4oMod(loader.Module):
             ]
         }
 
-        api_url = "https://api.paxsenix.biz.id/ai/gpt4o"
+        api_url = "https://paxsenix.koyeb.app/ai/gpt4o"
         headers = {"Content-Type": "application/json"}
 
         try:
@@ -89,12 +87,15 @@ class GPT4oMod(loader.Module):
                         data = await resp.json()
                         response_message = data.get("message", "No response received.")
 
-                        # Преобразуем Markdown в HTML
-                        html_response = self._markdown_to_html(response_message)
+                        # Convert Markdown to HTML
+                        html_response = self._convert_markdown_to_html(response_message)
+
+                        # Format code blocks
+                        formatted_response = self._format_code_block(html_response)
 
                         await utils.answer(
                             message,
-                            self.strings("response").format(response=html_response),
+                            self.strings("response").format(response=formatted_response),
                         )
                     else:
                         await utils.answer(message, self.strings("error"))
